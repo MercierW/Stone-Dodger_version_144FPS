@@ -816,8 +816,8 @@ window.addEventListener("DOMContentLoaded", function () {
     playerLife2.position.x = 50
     playerLife3.position.x = 100
 
-    const playerLifeArr = [playerLife1]
-
+    const playerLifeArr = [playerLife1, playerLife2, playerLife3]
+    
     /* Animations et mise en place des images **************************************************************************************/
     
     function animate() {
