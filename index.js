@@ -83,6 +83,71 @@ window.addEventListener("DOMContentLoaded", function () {
 
 
     /* Événement d'écoute ***********************************************************************************/
+   
+    // Logique déclanchée par les touches du clavier quand elles sont appuyées --->
+
+    window.addEventListener('keydown', function(event) {
+      if(!lockControl){
+        switch(event.key) {
+          case 'd':
+            if(keys.left.alwaysPressed){
+              lastKey = 'left';
+            } else {
+              keys.right.pressed = true
+              keys.right.alwaysPressed = true             
+              lastKey = 'right';
+              player.walkingSoundPlay()    
+            }   
+            break
+          case 'q':     
+              if(keys.right.alwaysPressed){
+                lastKey = 'right';
+              } else {
+                keys.left.pressed = true
+                keys.left.alwaysPressed = true
+                lastKey = 'left';
+                player.walkingSoundPlay()    
+              }     
+            break
+          case 'z':
+            if(!keys.up.pressed && keys.up.nbOfUp === 0){ 
+              player.moving.y -= 20;
+              keys.up.nbOfUp++
+            }
+            keys.up.pressed = true;
+            break
+          case 's':
+            break
+        }
+      }
+    })
+    // Logique déclanchée par les touches du clavier quand elles sont appuyées --->
+
+    // Logique déclanchée par les touches du clavier quand elles sont relâchées --->
+
+    window.addEventListener('keyup', function(event) {
+      if(!lockControl){
+        switch(event.key) {
+          case 'd':
+            keys.right.pressed = false;
+            keys.right.alwaysPressed = false
+            break
+          case 'q':
+            keys.left.pressed = false;
+            keys.left.alwaysPressed = false
+            break
+          case 'z':
+            if(player.moving.y !== 0) {
+              player.moving.y += 5;
+            }      
+            break
+          case 's':
+            break
+        }
+      }
+    })
+
+    // Logique déclanchée par les touches du clavier quand elles sont relâchées --->
 
     btnStart.addEventListener('click', function(){
       btnFFSoundThree.play()
@@ -163,6 +228,13 @@ window.addEventListener("DOMContentLoaded", function () {
           jump: {
             right: createImage('./sprites/Jump_Right.png'),
             left: createImage('./sprites/Jump_Left.png')
+          },
+          death: {
+            right: createImage('./sprites/Dead_Right.png'),
+            left: createImage('./sprites/Dead_Left.png'),
+            frameSpeed: 0.007,
+            frameLimit: 2,
+            width: 256
           }
         }
         this.hitBox = {
@@ -196,7 +268,151 @@ window.addEventListener("DOMContentLoaded", function () {
       hurtSoundPlay(){
         this.hurtSound.play()
       }
-      
+
+      jumpAssignmentImage(){
+        if(keys.up.pressed && lastKey === 'right') {  
+          player.currentSprite = player.sprites.jump.right
+        } 
+        else if(keys.up.pressed && lastKey === 'left') {
+          player.currentSprite = player.sprites.jump.left
+        }
+      }
+
+      framesReset() {
+        if(
+        this.frames >= this.sprites.idle.frameLimit && 
+        (this.currentSprite === this.sprites.idle.right ||
+        this.currentSprite === this.sprites.idle.left)
+        ) {
+          this.frames = 0
+        }          
+        else if(
+          this.frames >= this.sprites.run.frameLimit &&
+          (this.currentSprite === this.sprites.run.right ||
+          this.currentSprite === this.sprites.run.left)
+        ) {
+          player.frames = 0
+        } 
+      }
+
+      drawAnimationSwitch() {
+        if(lastKey === 'left' && !keys.up.pressed){
+          player.drawMovingLeft()
+        }       
+        else if(lastKey === 'right' && !keys.up.pressed) {
+          player.drawMovingRight()
+        }      
+        if(player.currentSprite === player.sprites.jump.right) {
+          player.drawJumpRight()
+        }    
+        else if(player.currentSprite === player.sprites.jump.left) {
+          player.drawJumpLeft()
+        }
+      }
+  
+      gravityEffect() {
+        if(player.position.y + player.height + player.moving.y <= canvas.height -20) { 
+          player.moving.y += gravity;       
+        } 
+        else {
+          player.moving.y = 0;
+          keys.up.nbOfUp = 0
+          keys.up.pressed = false;
+
+          if(player.currentSprite === player.sprites.jump.right) {
+            player.currentSprite = player.sprites.idle.right
+          } 
+          else if(player.currentSprite === player.sprites.jump.left) {
+            player.currentSprite = player.sprites.idle.left
+          }
+        }
+      }
+  
+      plateformeCollision() {
+        if(
+          player.position.y + player.height <= platform.position.y +80 &&
+          player.position.y + player.height + player.moving.y >= platform.position.y +80 &&
+          player.position.x + player.width >= platform.position.x +80 &&
+          player.position.x <= platform.position.x -80 + platform.width
+          ) {        
+            player.moving.y = 0
+            keys.up.nbOfUp = 0
+            keys.up.pressed = false;
+
+          if(player.currentSprite === player.sprites.jump.right) {
+            player.currentSprite = player.sprites.idle.right
+          } 
+          else if(player.currentSprite === player.sprites.jump.left) {
+            player.currentSprite = player.sprites.idle.left
+          }
+        }
+      }
+  
+      spritesAnimationsSwitch() {
+        if(
+          keys.right.pressed &&
+          lastKey === 'right' &&
+          player.currentSprite !== player.sprites.run.right
+          ) {
+          player.currentSprite = player.sprites.run.right;
+          player.currentFrameSpeed = player.sprites.run.frameSpeed;    
+        }   
+        else if(
+          keys.left.pressed &&
+          lastKey === 'left' &&
+          player.currentSprite !== player.sprites.run.left
+          ) {     
+          player.currentSprite = player.sprites.run.left;
+          player.currentFrameSpeed = player.sprites.run.frameSpeed;
+          player.currentWitdthForDrawLeft = player.sprites.run.width;        
+        }       
+        else if(
+          !keys.left.pressed &&
+          lastKey === 'left' &&
+          player.currentSprite !== player.sprites.idle.left
+          ) {
+          player.currentSprite = player.sprites.idle.left;
+          player.currentFrameSpeed = player.sprites.idle.frameSpeed;
+          player.currentWitdthForDrawLeft = player.sprites.idle.width;
+        }       
+        else if(
+          !keys.right.pressed &&
+          lastKey === 'right' && 
+          player.currentSprite !== player.sprites.idle.right
+          ) {
+          player.currentSprite = player.sprites.idle.right;
+          player.currentFrameSpeed = player.sprites.idle.frameSpeed;
+        }
+      }
+  
+      playerInvulerabilityTime() {
+        if(player.playerHit){
+          if(player.invulnerabilityTime < 500) {
+            player.sprites.idle.frameLimit = 6
+            player.sprites.run.frameLimit = 8
+            player.invulnerabilityTime++
+            player.hitBox.position.x = -500
+          } else {
+            player.sprites.idle.frameLimit = 5
+            player.sprites.run.frameLimit = 7
+            player.invulnerabilityTime = 0
+            player.playerHit = false
+          }
+        }
+      }
+  
+      movingManagement() {
+        if(keys.right.pressed && player.position.x < canvas.width -80) {
+          player.moving.x = 2.5;
+        } 
+        else if(keys.left.pressed && player.position.x > -45) {
+          player.moving.x = - 2.5;
+        } 
+        else {
+          player.moving.x = 0;
+        }
+      }
+    
       drawMovingRight() {
         this.hitBox.position.x = this.position.x +45;
         this.hitBox.position.y = this.position.y +46;
@@ -213,6 +429,7 @@ window.addEventListener("DOMContentLoaded", function () {
           this.height
         )
       }
+
       drawMovingLeft() {
         this.hitBox.position.x = this.position.x +51;
         this.hitBox.position.y = this.position.y +46;
@@ -246,13 +463,46 @@ window.addEventListener("DOMContentLoaded", function () {
           this.height
         )
       }
+
       drawJumpLeft(){        
         this.hitBox.position.x = this.position.x +45;
         this.hitBox.position.y = this.position.y +46;
         this.hitBox.ctx.fillRect(this.hitBox.position.x, this.hitBox.position.y, this.hitBox.width, this.hitBox.height);
         ctx.drawImage(
           this.currentSprite,
-          128*6,
+          128 * 6,
+          0,
+          129,
+          129, 
+          this.position.x, 
+          this.position.y, 
+          this.width, 
+          this.height
+        )
+      }
+
+      drawDeathRight() {
+        this.currentFrameSpeed = this.sprites.death.frameSpeed
+        this.currentSprite = this.sprites.death.right
+        ctx.drawImage(
+          this.currentSprite,
+          128 * Math.round(this.frames),
+          0,
+          129,
+          129, 
+          this.position.x, 
+          this.position.y, 
+          this.width, 
+          this.height
+        )
+      }
+      drawDeathLeft() {
+        this.currentWitdthForDrawLeft = this.sprites.death.width
+        this.currentFrameSpeed = this.sprites.death.frameSpeed
+        this.currentSprite = this.sprites.death.left
+        ctx.drawImage(
+          this.currentSprite,
+          this.currentWitdthForDrawLeft - (128 * Math.round(this.frames)),
           0,
           129,
           129, 
@@ -264,144 +514,36 @@ window.addEventListener("DOMContentLoaded", function () {
       }
 
       update() {
-        this.frames += this.currentFrameSpeed
-        
-        if(keys.up.pressed && lastKey === 'right') {  
-          this.currentSprite = this.sprites.jump.right
-        } else if(keys.up.pressed && lastKey === 'left') {
-          this.currentSprite = this.sprites.jump.left
-        }
-        // Condition lié au framerate des animations, elle permet de ralentir ou accélérer les mouvements --->
-        if
-        (
-        this.frames >= this.sprites.idle.frameLimit && 
-        (this.currentSprite === this.sprites.idle.right ||
-        this.currentSprite === this.sprites.idle.left)
-        ) {
-          this.frames = 0
-        } 
-        
-        else if
-        (
-        this.frames >= this.sprites.run.frameLimit &&
-        (this.currentSprite === this.sprites.run.right ||
-        this.currentSprite === this.sprites.run.left)
-        ) {
-          this.frames = 0
-        } 
-              
-        // Condition lié au framerate des animations, elle permet de ralentir ou accélérer les mouvements ---> 
-
-        if(lastKey === 'left' && !keys.up.pressed){
-          this.drawMovingLeft()
-        } else if(lastKey === 'right' && !keys.up.pressed) {
-          this.drawMovingRight()
-        }
-        
-        if(this.currentSprite === this.sprites.jump.right) {
-          this.drawJumpRight()
-        } 
-        
-        else if(this.currentSprite === this.sprites.jump.left) {
-          this.drawJumpLeft()
-        }
-
-        // Met à jour la position du personnage dans le canvas --->
-        this.position.x += this.moving.x;
-        this.position.y += this.moving.y;
-        // Met à jour la position du personnage dans le canvas --->
-
-        // Permet d'appliquer et de gérer l'effet de gravité sur le personnage --->
-        if(this.position.y + this.height + this.moving.y <= canvas.height -20) {
-          this.moving.y += gravity;
-        } else {
-          this.moving.y = 0;
-          keys.up.nbOfUp = 0
-          keys.up.pressed = false;
-          if(this.currentSprite === this.sprites.jump.right) {
-            this.currentSprite = this.sprites.idle.right
-          } else if(this.currentSprite === this.sprites.jump.left) {
-            this.currentSprite = this.sprites.idle.left
+        this.position.y += this.moving.y;      
+        this.gravityEffect()
+        this.plateformeCollision()
+        if(this.currentSprite === this.sprites.death.right || this.currentSprite === this.sprites.death.left) {    
+          if(this.currentSprite === this.sprites.death.right) {
+            this.drawDeathRight()
+          }
+          else if(this.currentSprite === this.sprites.death.left) {
+            this.drawDeathLeft()
+          }
+          
+          if(this.frames >= this.sprites.death.frameLimit) {
+            this.frames = this.sprites.death.frameLimit
+          }
+          else {
+            this.frames += this.currentFrameSpeed
           }
         }
-        // Permet d'appliquer et de gérer l'effet de gravité sur le personnage --->
-
-        // Gère les collisions entre le personnage et la plateforme pour déterminer jusqu'où le personnage peut marcher dessus avant de tomber --->
-        if(
-          player.position.y + player.height <= platform.position.y +80 &&
-          player.position.y + player.height + player.moving.y >= platform.position.y +80 &&
-          player.position.x + player.width >= platform.position.x +80 &&
-          player.position.x <= platform.position.x -80 + platform.width
-          ) {
-          player.moving.y = 0
-          keys.up.nbOfUp = 0
-          keys.up.pressed = false;
-          if(this.currentSprite === this.sprites.jump.right) {
-            this.currentSprite = this.sprites.idle.right
-          } else if(this.currentSprite === this.sprites.jump.left) {
-            this.currentSprite = this.sprites.idle.left
-          }
+        else {
+          this.frames += this.currentFrameSpeed
+          this.position.x += this.moving.x;
+          this.jumpAssignmentImage()
+          this.movingManagement()
+          this.framesReset()
+          this.drawAnimationSwitch()
+          this.spritesAnimationsSwitch()
+          this.playerInvulerabilityTime()
         }
-        // Gère les collisions entre le personnage et la plateforme pour déterminer jusqu'où le personnage peut marcher dessus avant de tomber --->
-
-        // Gère les animations aux mouvements du personnage --->
-
-        if(
-          keys.right.pressed &&
-          lastKey === 'right' &&
-          player.currentSprite !== player.sprites.run.right
-          ) {
-          player.currentSprite = player.sprites.run.right;
-          player.currentFrameSpeed = player.sprites.run.frameSpeed;    
-        } 
-        
-        else if(
-          keys.left.pressed &&
-          lastKey === 'left' &&
-          player.currentSprite !== player.sprites.run.left
-          ) {     
-          player.currentSprite = player.sprites.run.left;
-          player.currentFrameSpeed = player.sprites.run.frameSpeed;
-          player.currentWitdthForDrawLeft = player.sprites.run.width;        
-        } 
-        
-        else if(
-          !keys.left.pressed &&
-          lastKey === 'left' &&
-          player.currentSprite !== player.sprites.idle.left
-          ) {
-          player.currentSprite = player.sprites.idle.left;
-          player.currentFrameSpeed = player.sprites.idle.frameSpeed;
-          player.currentWitdthForDrawLeft = player.sprites.idle.width;
-        } 
-        
-        else if(
-          !keys.right.pressed &&
-          lastKey === 'right' && 
-          player.currentSprite !== player.sprites.idle.right
-          ) {
-          player.currentSprite = player.sprites.idle.right;
-          player.currentFrameSpeed = player.sprites.idle.frameSpeed;
-        }
-
-        if(this.playerHit){
-          if(this.invulnerabilityTime < 500) {
-            this.sprites.idle.frameLimit = 6
-            this.sprites.run.frameLimit = 8
-            this.invulnerabilityTime++
-            this.hitBox.position.x = -500
-          } else {
-            this.sprites.idle.frameLimit = 5
-            this.sprites.run.frameLimit = 7
-            this.invulnerabilityTime = 0
-            this.playerHit = false
-          }
-        }
-      
-        // Gère les animations aux mouvements du personnage --->
       }
     }
-    const player = new Player()
 
     /* Classe du joueur **************************************************************************************/
 
@@ -427,7 +569,6 @@ window.addEventListener("DOMContentLoaded", function () {
           this.height)
       }
     }
-    const platform = new Platform()
 
     /* Classe de la plateforme **************************************************************************************/
 
@@ -479,9 +620,77 @@ window.addEventListener("DOMContentLoaded", function () {
       }
 
       createStonePool(){
-          for(let i = this.stonePool.length; i < this.max; i++) {
-              this.stonePool.push(new Stone())
+        for(let i = this.stonePool.length; i < this.max; i++) {
+          this.stonePool.push(new Stone())
+        }
+      }
+
+      rockFallManagement() {
+        if(this.position.y + this.height + this.moving.y <= canvas.height -20) {
+          this.moving.y += this.speedFall   
+        }  
+        else if(this.position.y + this.height + this.moving.y > canvas.height +400 && this.touchGround) {
+          this.touchGround = false
+          this.stopToFall = true
+          this.position.y = -150
+          this.moving.y = Math.random() * 10
+          this.position.x = Math.random() * canvas.width
+        }     
+        else if(this.position.y + this.height + this.moving.y > canvas.height -20 && this.touchGround) {
+          this.moving.y += this.speedFall            
+        }     
+        else if(!this.stopToFall) {
+          this.moving.y = this.reboundPower;
+          this.touchGround = true
+          this.soundGroundImpactPlay()
+        } 
+        else {
+          this.stonePool.pop()
+          this.stopToFall = false
+        }
+      }
+
+      stoneHitPlayerManagement() {
+        if(
+          this.hitBox.position.y + this.hitBox.height >= player.hitBox.position.y &&
+          this.hitBox.position.y <= player.hitBox.position.y + player.hitBox.height && 
+          this.hitBox.position.x + this.hitBox.width >= player.hitBox.position.x &&
+          this.hitBox.position.x <= player.hitBox.position.x + player.hitBox.width     
+          ) {
+          smoke.position.x = this.position.x
+          smoke.position.y = this.position.y
+          stone.stonePool = stone.stonePool.filter((el) => el.id !== this.id)
+          this.soundImpactPlay()
+          player.hurtSoundPlay()
+
+          if(lastKey === 'right') {
+            player.position.x = player.position.x - 20
+            player.position.y = player.position.y - 25
+          } 
+          else {
+            player.position.x = player.position.x + 20
+            player.position.y = player.position.y - 25
           }
+
+          player.playerHit = true
+          smoke.triggerSmokeAnimation = true
+          smoke.spriteSmoke.frameX = 0
+
+          playerLifeArr.pop()
+          if(playerLifeArr.length === 0) {
+            lockControl = true
+            player.frames = 0
+            player.position.x += 0
+            player.hitBox.position.x = -500
+            if(lastKey === 'right') {
+              player.drawDeathRight()
+            }
+            else if(lastKey === 'left') {
+              player.drawDeathLeft()
+            } 
+            setTimeout(()=> {player.playerLose = true}, 2500)
+          }
+        }
       }
 
       drawStone() { 
@@ -504,66 +713,15 @@ window.addEventListener("DOMContentLoaded", function () {
       update(){
         this.angle += this.va
         this.position.y += this.moving.y;
-        
+
         if(this.touchGround) {
           this.hitBox.position.x = 0
           this.hitBox.position.y = 0
         }
-        
-        if(this.position.y + this.height + this.moving.y <= canvas.height -20) {
-          this.moving.y += this.speedFall   
-        } 
-        
-        else if(this.position.y + this.height + this.moving.y > canvas.height +400 && this.touchGround) {
-          this.touchGround = false
-          this.stopToFall = true
-          this.position.y = -150
-          this.moving.y = Math.random() * 10
-          this.position.x = Math.random() * canvas.width
-        }
-        
-        else if(this.position.y + this.height + this.moving.y > canvas.height -20 && this.touchGround) {
-          this.moving.y += this.speedFall            
-        } 
-        
-        else if(!this.stopToFall) {
-          this.moving.y = this.reboundPower;
-          this.touchGround = true
-          this.soundGroundImpactPlay()
-        } else {
-          this.stonePool.pop()
-          this.stopToFall = false
-        }
 
-        if(
-          this.hitBox.position.y + this.hitBox.height >= player.hitBox.position.y &&
-          this.hitBox.position.y <= player.hitBox.position.y + player.hitBox.height && 
-          this.hitBox.position.x + this.hitBox.width >= player.hitBox.position.x &&
-          this.hitBox.position.x <= player.hitBox.position.x + player.hitBox.width     
-          ) {
-          smoke.position.x = this.position.x
-          smoke.position.y = this.position.y
-          stone.stonePool = stone.stonePool.filter((el) => el.id !== this.id)
-          this.soundImpactPlay()
-          player.hurtSoundPlay()
+        this.rockFallManagement()
+        this.stoneHitPlayerManagement()
 
-          if(lastKey === 'right') {
-            player.position.x = player.position.x - 20
-            player.position.y = player.position.y - 25
-          } else {
-            player.position.x = player.position.x + 20
-            player.position.y = player.position.y - 25
-          }
-
-          player.playerHit = true
-          smoke.triggerSmokeAnimation = true
-          smoke.spriteSmoke.frameX = 0
-
-          playerLifeArr.pop()
-          if(playerLifeArr.length === 0) {
-            player.playerLose = true
-          }
-        }    
         if(stone.stonePool.length <= this.max) {     
           stone.createStonePool()
         }
@@ -571,9 +729,6 @@ window.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    const stone = new Stone()
-    stone.createStonePool()
-    
     /* Classe des pierres **************************************************/
 
     class Smoke {
@@ -613,7 +768,8 @@ window.addEventListener("DOMContentLoaded", function () {
         if(this.spriteSmoke.frameX >= 4) {
           this.spriteSmoke.frameX = 0
           smoke.triggerSmokeAnimation = false
-        } else {
+        } 
+        else {
           this.spriteSmoke.frameX += this.spriteSmoke.frameSpeed
         }
       }
@@ -642,14 +798,25 @@ window.addEventListener("DOMContentLoaded", function () {
       }
     }
     
+    /* Classe vie du personnage **************************************************************************************/
+
+    /* Objet instancié à partir des classes **************************************************************************************/
+
+    const player = new Player()
+    const platform = new Platform()
+    const stone = new Stone()
+  
     const playerLife1 = new PlayerLife()
     const playerLife2 = new PlayerLife()
     const playerLife3 = new PlayerLife()
+
+    /* Objet instancié à partir des classes **************************************************************************************/
+
+    stone.createStonePool()
     playerLife2.position.x = 50
     playerLife3.position.x = 100
-    const playerLifeArr = [playerLife1, playerLife2, playerLife3]
-    
-    /* Classe vie du personnage **************************************************************************************/
+
+    const playerLifeArr = [playerLife1]
 
     /* Animations et mise en place des images **************************************************************************************/
     
@@ -663,9 +830,9 @@ window.addEventListener("DOMContentLoaded", function () {
         player.update()
   
         if(gameStarted) {
-            stone.stonePool.forEach(stone => {
-              stone.update()
-            })
+          stone.stonePool.forEach(stone => {
+            stone.update()
+          })
         }
   
         playerLifeArr.forEach(life => {
@@ -678,95 +845,20 @@ window.addEventListener("DOMContentLoaded", function () {
   
         ctx.imageSmoothingEnabled = false;
         requestAnimationFrame(animate)
-      // Logique de déplacement du personnage ----->
-        if(
-            keys.right.pressed &&
-            player.position.x < canvas.width -80
-            ) {
-            player.moving.x = 2.5;
-          } else if(
-            keys.left.pressed &&
-            player.position.x > -45
-            ) {
-              player.moving.x = - 2.5;
-            } else {
-              player.moving.x = 0;
-            }
-        } else if(player.playerWin) {
-          overlay.classList.remove('d-none')
-          modalWin.classList.remove('d-none')
-        }else {
-          loseSound.play()
-          themeSong.pause()
-          time = 0
-          overlay.classList.remove('d-none')
-          modalLose.classList.remove('d-none')
-        }
+      } 
+      else if(player.playerWin) {
+        overlay.classList.remove('d-none')
+        modalWin.classList.remove('d-none')
       }
-      // Logique de déplacement du personnage ----->
-     
-      /* Logique déclanchée par les touches du clavier quand elles sont appuyées ***********************************************/
-
-    window.addEventListener('keydown', function(event) {
-      if(!lockControl){
-        switch(event.key) {
-          case 'd':
-            if(keys.left.alwaysPressed){
-              lastKey = 'left';
-            } else {
-              keys.right.pressed = true
-              keys.right.alwaysPressed = true             
-              lastKey = 'right';
-              player.walkingSoundPlay()    
-            }   
-            break
-          case 'q':     
-              if(keys.right.alwaysPressed){
-                lastKey = 'right';
-              } else {
-                keys.left.pressed = true
-                keys.left.alwaysPressed = true
-                lastKey = 'left';
-                player.walkingSoundPlay()    
-              }     
-            break
-          case 'z':
-            if(!keys.up.pressed && keys.up.nbOfUp === 0){
-              player.moving.y -= 20;
-              keys.up.nbOfUp++
-            }
-            keys.up.pressed = true;
-            break
-          case 's':
-            break
-        }
+      else {
+        loseSound.play()
+        themeSong.pause()
+        time = 0
+        overlay.classList.remove('d-none')
+        modalLose.classList.remove('d-none')
       }
-    })
-
-    /* Logique déclanchée par les touches du clavier quand elles sont appuyées ***********************************************/
-
-    /* Logique déclanchée par les touches du clavier quand elles sont relâchées ***********************************************/
-
-    window.addEventListener('keyup', function(event) {
-      if(!lockControl){
-        switch(event.key) {
-          case 'd':
-            keys.right.pressed = false;
-            keys.right.alwaysPressed = false
-            break
-          case 'q':
-            keys.left.pressed = false;
-            keys.left.alwaysPressed = false
-            break
-          case 'z':
-            if(player.moving.y !== 0) {
-              player.moving.y += 5;
-            }      
-            break
-          case 's':
-            break
-        }
-      }
-    })
+    }
     animate()
+
+    /* Animations et mise en place des images **************************************************************************************/
   });
